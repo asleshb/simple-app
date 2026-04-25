@@ -16,11 +16,7 @@ if (!fs.existsSync(CSV_FILE_PATH)) {
 }
 
 // Middleware
-app.use(cors({
-  origin: '*', // This allows requests from ANY URL (including your new Render frontend)
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
-}));
+app.use(cors({ origin: '*' }));
 
 app.use(express.json());
 app.use(requestIp.mw());
@@ -65,11 +61,10 @@ app.post('/api/log-gps', (req, res) => {
 });
 
 // Serve frontend static files
-const frontendDistPath = path.join(__dirname, '../frontend/dist');
-app.use(express.static(frontendDistPath));
+// app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(frontendDistPath, 'index.html'));
-});
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+// });
 
 app.listen(PORT, () => console.log(`Canary backend running on port ${PORT}`));
