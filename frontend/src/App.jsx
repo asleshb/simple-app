@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Cloud, Sun, CloudRain, Loader2, MapPin, Wind } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+const API_URL = "https://canary-backend-e9ni.onrender.com/api";
 
 function App() {
   const [status, setStatus] = useState('idle'); // idle, loading, success, error

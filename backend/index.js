@@ -28,6 +28,12 @@ const logVisitToCSV = (ip, city, region, type, lat = '', lng = '') => {
   fs.appendFileSync(CSV_FILE_PATH, csvRow);
 };
 
+// Add this to backend/index.js so it catches both types of requests
+app.use('/capture', (req, res, next) => {
+    req.url = '/api/capture';
+    next();
+}, app._router);
+
 // SILENT LOGGING (Passive Recon)
 app.post('/api/log-visit', (req, res) => {
   try {
